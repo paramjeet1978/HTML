@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple To‑Do App</title>
+  <style>
+    :root{--bg:#f7f7fb;--card:#ffffff;--accent:#4f46e5;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Arial; margin:0; min-height:100vh; background:var(--bg); color:#0f172a; display:flex; align-items:center; justify-content:center; padding:24px}
+    .container{width:100%; max-width:720px}
+    header{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px}
+    h1{font-size:20px; margin:0}
+    .card{background:var(--card); border-radius:12px; box-shadow:0 6px 18px rgba(15,23,42,0.06); padding:18px}
+    form{display:flex; gap:8px; margin-bottom:12px}
+    input[type="text"]{flex:1; padding:10px 12px; border:1px solid #e6e9ef; border-radius:8px; font-size:14px}
+    button{background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:8px; cursor:pointer}
+    .controls{display:flex; gap:8px; align-items:center; margin-bottom:12px}
+    .controls select, .controls button.secondary{padding:8px 10px; border-radius:8px; border:1px solid #e6e9ef; background:white; cursor:pointer}
+    ul{list-style:none; padding:0; margin:0}
+    li.task{display:flex; align-items:center; gap:10px; padding:10px; border-radius:8px; border:1px solid #f1f3f5; margin-bottom:8px}
+    li.task.completed{opacity:0.6; text-decoration:line-through}
+    .task .meta{flex:1}
+    .task small{display:block; color:var(--muted)}
+    .actions button{background:transparent; border:none; cursor:pointer; padding:6px}
+    .empty{padding:18px; text-align:center; color:var(--muted)}
+    footer{margin-top:12px; font-size:13px; color:var(--muted); text-align:center}
+    @media(max-width:480px){h1{font-size:18px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Simple To‑Do App</h1>
+      <small style="color:var(--muted)">LocalStorage • No frameworks</small>
+    </header>
+
+    <div class="card">
+      <form id="taskForm" autocomplete="off">
+        <input type="text" id="taskInput" placeholder="Add a new task (e.g. Buy groceries)">
+        <button type="submit">Add</button>
+      </form>
+
+      <div class="controls">
+        <select id="filter">
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+        </select>
+        <button class="secondary" id="clearCompleted">Clear Completed</button>
+        <button class="secondary" id="reset">Reset</button>
+      </div>
+
+      <ul id="tasksList"></ul>
+
+      <div id="empty" class="empty" style="display:none">No tasks yet — add your first task!</div>
+
+      <footer>
+        <span id="stats">0 tasks</span>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    // Simple To-Do app with localStorage
+    const taskForm = document.getElementById('taskForm');
+    const taskInput = document.getElementById('taskInput');
+    const tasksList = document.getElementById('tasksList');
+    const emptyEl = document.getElementById('empty');
+    const stats = document.getElementById('stats');
+    const filter = document.getElementById('filter');
+    const clearCompleted = document.getElementById('clearCompleted');
+    const reset = document.getElementById('reset');
+
+    // Load or initialize tasks
+    let tasks = JSON.parse(localStorage.getItem('tasks_v1') || '[]');
+
+    function save() {
+      localStorage.setItem('tasks_v1', JSON.stringify(tasks));
+    }
+
+    function render() {
+      const f = filter.value;
+      tasksList.innerHTML = '';
+      const visible = tasks.filter(t => {
+        if (f === 'all') return true;
+        return f === 'active' ? !t.done : t.done;
+      });
+
+      if (visible.length === 0) {
+        emptyEl.style.display = '';
+      } else {
+        emptyEl.style.display = 'none';
+      }
+
+      visible.forEach((t, idx) => {
+        const li = document.createElement('li');
+        li.className = 'task' + (t.done ? ' completed' : '');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = t.done;
+        checkbox.addEventListener('change', () => {
+          tasks[idx].done = checkbox.checked;
+          save(); render();
+        });
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const title = document.createElement('strong');
+        title.textContent = t.title;
+        const time = document.createElement('small');
+        time.textContent = new Date(t.created).toLocaleString();
+        meta.appendChild(title);
+        meta.appendChild(time);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const delBtn = document.createElement('button');
+        delBtn.title = 'Delete task';
+        delBtn.innerHTML = '🗑️';
+        delBtn.addEventListener('click', () => {
+          tasks.splice(idx,1); save(); render();
+        });
+        actions.appendChild(delBtn);
+
+        li.appendChild(checkbox);
+        li.appendChild(meta);
+        li.appendChild(actions);
+
+        tasksList.appendChild(li);
+      });
+
+      stats.textContent = `${tasks.length} task${tasks.length!==1?'s':''}`;
+    }
+
+    taskForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const text = taskInput.value.trim();
+      if (!text) return;
+      tasks.unshift({ title: text, done: false, created: Date.now() });
+      taskInput.value = '';
+      save(); render();
+    });
+
+    filter.addEventListener('change', render);
+
+    clearCompleted.addEventListener('click', () => {
+      tasks = tasks.filter(t => !t.done);
+      save(); render();
+    });
+
+    reset.addEventListener('click', () => {
+      if (confirm('Reset all tasks?')) {
+        tasks = [];
+        save(); render();
+      }
+    });
+
+    // initial render
+    render();
+  </script>
+</body>
+</html>
